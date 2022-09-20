@@ -1,0 +1,3 @@
+[submodule "vendor/STDExtras"]
+	path = vendor/STDExtras
+	url = https://github.com/onthegrid007/STDExtras
