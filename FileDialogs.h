@@ -1,36 +1,44 @@
 #ifndef FILEDIALOGS_H_
 #define FILEDIALOGS_H_
 
-#include <string>
+#include "vendor/STDExtras/STDExtras.hpp"
+#include "FileUtilities.hpp"
 
-namespace FileDialogs {
-	typedef struct {
-		enum Flags {
-			MULTI_SELECT,
-			PROMPT_CREATE,
-			PROMPT_OVERWRITE,
-			DONT_ADD_TO_USER_RECENT,
-			DONT_DEREFERENCE_LINKS,
-			ENABLE_RESIZING,
-			NATIVE_EXPLORER,
-			FILE_MUST_EXIST,
-			ALLOW_ALTERNATE_EXTENSIONS,
-			SHOW_HIDDEN,
-			FORCE_WRITABLE,
-			FORCE_READONLY,
-			HIDE_READONLY_CHECKBOX,
-			HIDE_NETWORK_BUTTON,
-			DISABLE_CD,
-			DISABLE_WRITE_PROTECTION,
-			FORCE_PATH_MUST_EXIST,
-			IGNORE_NETWORK_SHARE_VIOLATION
-		};
-		std::string Title;
-		std::string StartPath;
-		int Flags;
-	} Props;
-	static const std::string Open(Props props);
-	static const std::string Save(Props props);
+namespace FileUtilities {
+	namespace FileDialogs {
+		typedef struct {
+			enum Flags : std::I32 {
+				// Multi-Platform
+				MULTI_SELECT = BIT(0),
+				FORCE_READONLY = BIT(1),
+				FORCE_WRITABLE = BIT(2),
+				FILE_MUST_EXIST = BIT(3),
+				PATH_MUST_EXIST = BIT(4),
+				PROMPT_CREATE = BIT(5),
+				PROMPT_OVERWRITE = BIT(6),
+				DISABLE_CD = BIT(7),
+				
+				// Windows Only
+				NATIVE_EXPLORER = BIT(8),
+				SHOW_HIDDEN = BIT(9),
+				ENABLE_RESIZING = BIT(10),
+				DONT_ADD_TO_USER_RECENT = BIT(11),
+				DONT_DEREFERENCE_LINKS = BIT(12),
+				ALLOW_ALTERNATE_EXTENSIONS = BIT(13),
+				HIDE_READONLY_CHECKBOX = BIT(14),
+				HIDE_NETWORK_BUTTON = BIT(15),
+				DISABLE_WRITE_PROTECTION = BIT(16),
+				IGNORE_NETWORK_SHARE_VIOLATION = BIT(17)
+			};
+			std::string Title;
+			std::string InitialPath;
+			std::I32 Flags;
+			std::vector<std::string> EXTWhitelist;
+			std::vector<std::string> EXTBlacklist;
+		} DialogProps;
+		static const std::vector<HLFileHandle> Open(DialogProps props);
+		static const HLFileHandle Save(DialogProps props);
+	}
 }
 
 #endif
