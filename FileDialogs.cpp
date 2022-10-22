@@ -1,4 +1,5 @@
 #include "FileDialogs.h"
+
 namespace FileUtilities {
 	namespace FileDialogs {
 		#ifdef _WIN32
