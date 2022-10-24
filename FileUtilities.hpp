@@ -63,7 +63,7 @@ namespace FileUtilities {
         SFXOnly
     };
     
-    class HLFileHandle {
+    class ParsedPath {
         private:
         std::tuple<std::string, std::string, std::string> m_fullPath = {"", "", ""};
         
@@ -100,9 +100,9 @@ namespace FileUtilities {
             return getPath();
         };
         
-        HLFileHandle() {}
+        ParsedPath() {}
 
-        HLFileHandle(std::string filepath) {
+        ParsedPath(std::string filepath) {
             setPath(filepath);
         }
     };
