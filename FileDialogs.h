@@ -36,8 +36,8 @@ namespace FileUtilities {
 			std::vector<std::string> EXTWhitelist;
 			std::vector<std::string> EXTBlacklist;
 		} DialogProps;
-		static const std::vector<HLFileHandle> Open(DialogProps props);
-		static const HLFileHandle Save(DialogProps props);
+		static const std::vector<ParsedPath> Open(DialogProps props);
+		static const ParsedPath Save(DialogProps props);
 	}
 }
 

@@ -104,6 +104,10 @@ namespace FileUtilities {
 
         ParsedPath(std::string filepath) {
             setPath(filepath);
+        } 
+        
+        ParsedPath(const char* filepath) {
+            setPath(filepath);
         }
     };
 }
