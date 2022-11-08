@@ -102,7 +102,7 @@ namespace FileUtilities {
         
         ParsedPath() {}
 
-        ParsedPath(std::string filepath) {
+        ParsedPath(const std::string filepath) {
             setPath(filepath);
         } 
         
