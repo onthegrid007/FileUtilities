@@ -1,58 +1,9 @@
 #ifndef FILEUTILITIES_H_
 #define FILEUTILITIES_H_
 
+#include <filesystem>
 #include <fstream>
 #include <shared_mutex>
-#include <filesystem>
-
-// namespace std {
-//     #define WITH_LOCK_DEFINITION(func, rtn) \
-//         template<typename ... Args> \
-//         decltype(rtn) func(Args... args) { \
-//             LType lock(m_mtx); \
-//             this->T::func(args...); \
-//             return rtn; \
-//         }
-//     template<typename T>
-//     class ts_ostream : public T {
-//         private:
-//         typedef std::shared_mutex MType;
-//         typedef std::lock_guard<MType> LType;
-//         MType m_mtx;
-        
-//         public:
-//         template<typename ... Args>
-//         ts_ostream(Args... args) :
-//             T(args...) {};
-        
-//         WITH_LOCK_DEFINITION(open, void())
-//         WITH_LOCK_DEFINITION(close, void())
-//         WITH_LOCK_DEFINITION(flush, void())
-//         WITH_LOCK_DEFINITION(write, void())
-//         WITH_LOCK_DEFINITION(operator<<, *this)
-//     };
-    
-//     template<typename T>
-//     class ts_istream : public T {
-//         private:
-//         typedef std::shared_mutex MType;
-//         typedef std::lock_guard<MType> LType;
-//         MType m_mtx;
-        
-//         public:
-//         template<typename ... Args>
-//         ts_istream(Args... args) :
-//             T(args...) {};
-        
-//         WITH_LOCK_DEFINITION(open, void())
-//         WITH_LOCK_DEFINITION(close, void())
-//         WITH_LOCK_DEFINITION(flush, void())
-//         WITH_LOCK_DEFINITION(read, *this)
-//         WITH_LOCK_DEFINITION(operator>>, *this)
-//     };
-//     typedef ts_ostream<std::ofstream> ts_ofstream;
-//     typedef ts_istream<std::ifstream> ts_ifstream;
-// }
 
 namespace FileUtilities {
     namespace fs = std::filesystem;
