@@ -1,9 +1,13 @@
-#ifndef FILEUTILITIES_H_
-#define FILEUTILITIES_H_
+/*
+*   BSD 3-Clause License, see file labled 'LICENSE' for the full License.
+*   Copyright (c) 2023, Peter Ferranti
+*   All rights reserved.
+*/
+
+#ifndef FILEUTILITIES_HPP_
+#define FILEUTILITIES_HPP_
 
 #include <filesystem>
-#include <fstream>
-#include <shared_mutex>
 
 namespace FileUtilities {
     namespace fs = std::filesystem;
