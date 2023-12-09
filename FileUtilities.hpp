@@ -7,11 +7,23 @@
 #ifndef FILEUTILITIES_HPP_
 #define FILEUTILITIES_HPP_
 
+#include "vendor/STDExtras/vendor/ThreadPool/vendor/PlatformDetection/PlatformDetection.h"
 #include <filesystem>
+// #include <iostream>
 
 namespace FileUtilities {
     namespace fs = std::filesystem;
-    enum PathType : char {
+    
+    static const fs::path FindSelfExe() {
+        #ifdef _BUILD_PLATFORM_WINDOWS
+            return fs::canonical(GetModuleFileName(NULL));
+        #endif
+        #ifdef _BUILD_PLATFORM_LINUX
+            return fs::canonical("/proc/self/exe");
+        #endif
+    }
+    
+    enum PathType : std::uint8_t {
         FullPath = 0,
         FullName,
         NameOnly,
@@ -23,12 +35,22 @@ namespace FileUtilities {
         std::tuple<std::string, std::string, std::string> m_fullPath = {"", "", ""};
         
         public:
+        struct RELATIVE{};
+        struct ABS{};
+        const bool setPathRelative(const std::string file) {
+            fs::path absPath = fs::absolute(std::string(FindSelfExe().parent_path()) + "/" + file);
+            std::get<0>(m_fullPath) = absPath.parent_path();
+            std::get<1>(m_fullPath) = absPath.stem();
+            std::get<2>(m_fullPath) = absPath.extension();
+            // std::cout << absPath << std::endl;
+            return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
+        }
+        
         const bool setPath(const std::string file) {
             fs::path absPath = fs::absolute(file);
             std::get<0>(m_fullPath) = absPath.parent_path();
             std::get<1>(m_fullPath) = absPath.stem();
             std::get<2>(m_fullPath) = absPath.extension();
-            // std::cout << getPath() << std::endl;
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
@@ -51,17 +73,17 @@ namespace FileUtilities {
             };
         }
         
-        operator std::string() {
+        operator const std::string() {
             return getPath();
         };
         
         ParsedPath() {}
 
-        ParsedPath(const std::string filepath) {
-            setPath(filepath);
-        } 
+        ParsedPath(const std::string filepath, RELATIVE) {
+            setPathRelative(filepath);
+        }
         
-        ParsedPath(const char* filepath) {
+        ParsedPath(const std::string filepath, ABS) {
             setPath(filepath);
         }
     };
