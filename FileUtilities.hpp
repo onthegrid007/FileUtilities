@@ -3,7 +3,6 @@
 *   Copyright (c) 2023, Peter Ferranti
 *   All rights reserved.
 */
-
 #ifndef FILEUTILITIES_HPP_
 #define FILEUTILITIES_HPP_
 
@@ -54,7 +53,7 @@ namespace FileUtilities {
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
-        const std::string getPath(PathType type = PathType::FullPath) {
+        const std::string getPath(PathType type = PathType::FullPath) const {
             switch(type) {
                 case PathType::FullPath:
                     return std::get<0>(m_fullPath) + "/" + std::get<1>(m_fullPath) + std::get<2>(m_fullPath);
@@ -73,7 +72,7 @@ namespace FileUtilities {
             };
         }
         
-        operator const std::string() {
+        operator const std::string() const {
             return getPath();
         };
         
