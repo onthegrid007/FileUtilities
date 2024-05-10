@@ -1,9 +1,3 @@
-[submodule "vendor/STDExtras"]
-	path = vendor/STDExtras
-	url = https://github.com/onthegrid007/STDExtras
-[submodule "vendor/DynamicDLL"]
-	path = vendor/DynamicDLL
-	url = https://github.com/onthegrid007/DynamicDLL
 [submodule "vendor/PlatformDetection"]
 	path = vendor/PlatformDetection
 	url = https://github.com/onthegrid007/PlatformDetection

@@ -1,25 +1,26 @@
 /*
 *   BSD 3-Clause License, see file labled 'LICENSE' for the full License.
-*   Copyright (c) 2023, Peter Ferranti
+*   Copyright (c) 2024, Peter Ferranti
 *   All rights reserved.
 */
 #ifndef FILEUTILITIES_HPP_
 #define FILEUTILITIES_HPP_
 
-#include "vendor/STDExtras/vendor/ThreadPool/vendor/PlatformDetection/PlatformDetection.h"
+#include "vendor/PlatformDetection/PlatformDetection.h"
 #include <filesystem>
-// #include <iostream>
+#include <string>
 
 namespace FileUtilities {
     namespace fs = std::filesystem;
-    
     static const fs::path FindSelfExe() {
-        #ifdef _BUILD_PLATFORM_WINDOWS
-            return fs::canonical(GetModuleFileName(NULL));
-        #endif
-        #ifdef _BUILD_PLATFORM_LINUX
+        #if defined(_BUILD_PLATFORM_WINDOWS)
+            return fs::canonical(GetModuleFileName(NULL, NULL, NULL));
+        #elif defined(_BUILD_PLATFORM_LINUX)
             return fs::canonical("/proc/self/exe");
+        #else
+            return "";
         #endif
+        
     }
     
     enum PathType : std::uint8_t {
@@ -41,7 +42,6 @@ namespace FileUtilities {
             std::get<0>(m_fullPath) = absPath.parent_path();
             std::get<1>(m_fullPath) = absPath.stem();
             std::get<2>(m_fullPath) = absPath.extension();
-            // std::cout << absPath << std::endl;
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         

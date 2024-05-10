@@ -1,57 +1,57 @@
 /*
 *   BSD 3-Clause License, see file labled 'LICENSE' for the full License.
-*   Copyright (c) 2023, Peter Ferranti
+*   Copyright (c) 2024, Peter Ferranti
 *   All rights reserved.
 */
 #ifndef FILEDIALOGS_HPP_
 #define FILEDIALOGS_HPP_
 
-#include "vendor/STDExtras/vendor/ThreadPool/vendor/PlatformDetection/PlatformDetection.h"
+#include "vendor/PlatformDetection/PlatformDetection.h"
 #include "FileUtilities.hpp"
-#include "vendor/STDExtras/STDExtras.hpp"
 
 namespace FileUtilities {
 	namespace FileDialogs {
+		#define Bit(x) (std::int32_t(1) << (x))
 		typedef struct {
-			enum Flags : std::I32 {
+			enum Flags : std::int32_t {
 				// Multi-Platform
-				MULTI_SELECT = BIT(0),
-				FORCE_READONLY = BIT(1),
-				FORCE_WRITABLE = BIT(2),
-				FILE_MUST_EXIST = BIT(3),
-				PATH_MUST_EXIST = BIT(4),
-				PROMPT_CREATE = BIT(5),
-				PROMPT_OVERWRITE = BIT(6),
-				DISABLE_CD = BIT(7),
+				MULTI_SELECT = Bit(0),
+				FORCE_READONLY = Bit(1),
+				FORCE_WRITABLE = Bit(2),
+				FILE_MUST_EXIST = Bit(3),
+				PATH_MUST_EXIST = Bit(4),
+				PROMPT_CREATE = Bit(5),
+				PROMPT_OVERWRITE = Bit(6),
+				DISABLE_CD = Bit(7),
 				
 				// Windows Only
-				NATIVE_EXPLORER = BIT(8),
-				SHOW_HIDDEN = BIT(9),
-				ENABLE_RESIZING = BIT(10),
-				DONT_ADD_TO_USER_RECENT = BIT(11),
-				DONT_DEREFERENCE_LINKS = BIT(12),
-				ALLOW_ALTERNATE_EXTENSIONS = BIT(13),
-				HIDE_READONLY_CHECKBOX = BIT(14),
-				HIDE_NETWORK_BUTTON = BIT(15),
-				DISABLE_WRITE_PROTECTION = BIT(16),
-				IGNORE_NETWORK_SHARE_VIOLATION = BIT(17)
+				NATIVE_EXPLORER = Bit(8),
+				SHOW_HIDDEN = Bit(9),
+				ENABLE_RESIZING = Bit(10),
+				DONT_ADD_TO_USER_RECENT = Bit(11),
+				DONT_DEREFERENCE_LINKS = Bit(12),
+				ALLOW_ALTERNATE_EXTENSIONS = Bit(13),
+				HIDE_READONLY_CHECKBOX = Bit(14),
+				HIDE_NETWORK_BUTTON = Bit(15),
+				DISABLE_WRITE_PROTECTION = Bit(16),
+				IGNORE_NETWORK_SHARE_VIOLATION = Bit(17)
 			};
 			std::string Title;
 			std::string InitialPath;
-			std::I32 Flags;
+			std::int32_t Flags;
 			std::vector<std::string> EXTWhitelist;
 			std::vector<std::string> EXTBlacklist;
 		} DialogProps;
 		static const std::vector<ParsedPath> Open(DialogProps props);
 		static const ParsedPath Save(DialogProps props);
-		#if _BUILD_PLATFORM_WINDOWS == 2
+		#if _BUILD_PLATFORM_WINDOWS
 			#include <windows.h>
 			#include <commdlg.h>
-			constexpr auto nl_delim = "\r\n";
-			constexpr auto parse_delim = "\0";
-		#elif _BUILD_PLATFORM_LINUX == 1
-			constexpr auto nl_delim = "\n";
-			constexpr auto parse_delim = ";";
+			constexpr std::string_view nl_delim{"\r\n"};
+			constexpr std::string_view parse_delim{"\0"};
+		#elif _BUILD_PLATFORM_LINUX
+			constexpr std::string_view nl_delim = "\n";
+			constexpr std::string_view parse_delim = ";";
 		#else
 			#error "Unknown or Unsupported Platform!"
 		#endif
@@ -69,7 +69,9 @@ namespace FileUtilities {
 		}
 		
 		static const std::vector<ParsedPath> Open(DialogProps props) {
+			std::vector<ParsedPath> rtn;
 			
+			return rtn;
 		}
 		
 		static const ParsedPath Save(DialogProps props) {
