@@ -50,8 +50,8 @@ namespace FileUtilities {
 			constexpr std::string_view nl_delim{"\r\n"};
 			constexpr std::string_view parse_delim{"\0"};
 		#elif _BUILD_PLATFORM_LINUX
-			constexpr std::string_view nl_delim = "\n";
-			constexpr std::string_view parse_delim = ";";
+			constexpr std::string_view nl_delim{"\n"};
+			constexpr std::string_view parse_delim{";"};
 		#else
 			#error "Unknown or Unsupported Platform!"
 		#endif
@@ -62,9 +62,9 @@ namespace FileUtilities {
 			while((pos_e = response.find(parse_delim, pos_s)) != std::string::npos) {
 				token = response.substr(pos_s, pos_e - pos_s);
 				pos_s = pos_e + 1;
-				rtn.emplace_back(token);
+				rtn.emplace_back(token, ParsedPath::ABS{});
 			}
-			rtn.emplace_back(std::move(response.substr(pos_s)));
+			rtn.emplace_back(response.substr(pos_s), ParsedPath::ABS{});
 			return rtn;
 		}
 		

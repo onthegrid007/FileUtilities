@@ -14,13 +14,29 @@ namespace FileUtilities {
     namespace fs = std::filesystem;
     static const fs::path FindSelfExe() {
         #if defined(_BUILD_PLATFORM_WINDOWS)
-            return fs::canonical(GetModuleFileName(NULL, NULL, NULL));
+            std::vector<char> buf(1024, 0);
+            auto size{buf.size()};
+            bool havePath{false};
+            bool shouldContinue{true};
+            while(shouldContinue) {
+                const auto result{GetModuleFileNameA(nullptr, &buf[0], size)};
+                const auto lastError{GetLastError()};
+                if(result == 0)
+                    shouldContinue = false;
+                else if(result < size) {
+                    havePath = true;
+                    shouldContinue = false;
+                }
+                else if((result == size) && ((lastError == ERROR_INSUFFICIENT_BUFFER) || (lastError == ERROR_SUCCESS)))
+                    buf.resize(size *= 2);
+            }
+            if(!havePath) return "";
+            return fs::canonical(std::string(&buf[0]));
         #elif defined(_BUILD_PLATFORM_LINUX)
             return fs::canonical("/proc/self/exe");
         #else
             return "";
         #endif
-        
     }
     
     enum PathType : std::uint8_t {
@@ -35,21 +51,21 @@ namespace FileUtilities {
         std::tuple<std::string, std::string, std::string> m_fullPath = {"", "", ""};
         
         public:
-        struct RELATIVE{};
+        struct REL{};
         struct ABS{};
         const bool setPathRelative(const std::string file) {
-            fs::path absPath = fs::absolute(std::string(FindSelfExe().parent_path()) + "/" + file);
-            std::get<0>(m_fullPath) = absPath.parent_path();
-            std::get<1>(m_fullPath) = absPath.stem();
-            std::get<2>(m_fullPath) = absPath.extension();
+            fs::path absPath = fs::absolute(FindSelfExe().parent_path().generic_string() + "/" + file);
+            std::get<0>(m_fullPath) = absPath.parent_path().generic_string();
+            std::get<1>(m_fullPath) = absPath.stem().generic_string();
+            std::get<2>(m_fullPath) = absPath.extension().generic_string();
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
         const bool setPath(const std::string file) {
             fs::path absPath = fs::absolute(file);
-            std::get<0>(m_fullPath) = absPath.parent_path();
-            std::get<1>(m_fullPath) = absPath.stem();
-            std::get<2>(m_fullPath) = absPath.extension();
+            std::get<0>(m_fullPath) = absPath.parent_path().generic_string();
+            std::get<1>(m_fullPath) = absPath.stem().generic_string();
+            std::get<2>(m_fullPath) = absPath.extension().generic_string();
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
@@ -78,11 +94,11 @@ namespace FileUtilities {
         
         ParsedPath() {}
 
-        ParsedPath(const std::string filepath, RELATIVE) {
+        ParsedPath(const std::string filepath, ParsedPath::REL r) {
             setPathRelative(filepath);
         }
         
-        ParsedPath(const std::string filepath, ABS) {
+        ParsedPath(const std::string filepath, ParsedPath::ABS a) {
             setPath(filepath);
         }
     };
