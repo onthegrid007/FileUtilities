@@ -54,18 +54,18 @@ namespace FileUtilities {
         struct REL{};
         struct ABS{};
         const bool setPathRelative(const std::string file) {
-            fs::path absPath = fs::absolute(FindSelfExe().parent_path().generic_string() + "/" + file);
-            std::get<0>(m_fullPath) = absPath.parent_path().generic_string();
-            std::get<1>(m_fullPath) = absPath.stem().generic_string();
-            std::get<2>(m_fullPath) = absPath.extension().generic_string();
+            fs::path absPath = fs::absolute(FindSelfExe().parent_path().string() + "/" + file);
+            std::get<0>(m_fullPath) = absPath.parent_path().string();
+            std::get<1>(m_fullPath) = absPath.stem().string();
+            std::get<2>(m_fullPath) = absPath.extension().string();
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
         const bool setPath(const std::string file) {
             fs::path absPath = fs::absolute(file);
-            std::get<0>(m_fullPath) = absPath.parent_path().generic_string();
-            std::get<1>(m_fullPath) = absPath.stem().generic_string();
-            std::get<2>(m_fullPath) = absPath.extension().generic_string();
+            std::get<0>(m_fullPath) = absPath.parent_path().string();
+            std::get<1>(m_fullPath) = absPath.stem().string();
+            std::get<2>(m_fullPath) = absPath.extension().string();
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
