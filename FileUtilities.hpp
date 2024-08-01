@@ -38,6 +38,11 @@ namespace FileUtilities {
             return "";
         #endif
     }
+
+    inline bool FileExists(const std::string path) {
+        struct stat buffer;
+        return (stat (path.c_str(), &buffer) == 0); 
+    }
     
     enum PathType : std::uint8_t {
         FullPath = 0,
