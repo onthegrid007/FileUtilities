@@ -10,6 +10,11 @@
 #include <filesystem>
 #include <string>
 
+#if defined(_BUILD_PLATFORM_WINDOWS)
+#define NOMINMAX
+#include <Windows.h>
+#endif
+
 namespace FileUtilities {
     namespace fs = std::filesystem;
     static const fs::path FindSelfExe() {
