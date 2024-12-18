@@ -11,8 +11,13 @@
 #include <string>
 
 #if defined(_BUILD_PLATFORM_WINDOWS)
-#define NOMINMAX
-#include <Windows.h>
+    #define NOMINMAX
+    #include <Windows.h>
+    #include <direct.h>
+    #define mkdir(path, code) _mkdir(path)
+#else
+    #include <sys/stat.h>
+    #include <sys/types.h>
 #endif
 
 namespace FileUtilities {
@@ -44,9 +49,32 @@ namespace FileUtilities {
         #endif
     }
 
-    inline bool FileExists(const std::string path) {
+    static inline bool FileExists(const std::string path) {
         struct stat buffer;
         return (stat (path.c_str(), &buffer) == 0); 
+    }
+
+    static inline bool DirectoryExists(const std::string& path) {
+        struct stat info;
+        if (stat(path.c_str(), &info) != 0) {
+            return false;
+        }
+        else if (info.st_mode & S_IFDIR) {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool MakeDirectory(const std::string& path) {
+        if (mkdir(path.c_str(), 0755) == 0) {
+            return true;
+        }
+        else if (errno == EEXIST) {
+            return DirectoryExists(path);
+        }
+        else {
+            return false;
+        }
     }
     
     enum PathType : std::uint8_t {
