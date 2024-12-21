@@ -140,5 +140,10 @@ namespace FileUtilities {
             setPath(filepath);
         }
     };
+
+    inline std::ostream& operator<<(std::ostream& os, const ParsedPath& parsedPath) {
+        os << parsedPath.getPath();
+        return os;
+    }
 }
 #endif
