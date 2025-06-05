@@ -1,6 +1,6 @@
 /*
 *   BSD 3-Clause License, see file labled 'LICENSE' for the full License.
-*   Copyright (c) 2024, Peter Ferranti
+*   Copyright (c) 2025, Peter Ferranti
 *   All rights reserved.
 */
 #ifndef FILEUTILITIES_HPP_
@@ -22,6 +22,10 @@
 
 namespace FileUtilities {
     namespace fs = std::filesystem;
+    using DirContents = fs::directory_iterator;
+    using DirContentsRecursive = fs::recursive_directory_iterator;
+    using TimeType = std::filesystem::file_time_type;
+    using GetModifyTime = fs::last_write_time;
     static const fs::path FindSelfExe() {
         #if defined(_BUILD_PLATFORM_WINDOWS)
             std::vector<char> buf(1024, 0);
