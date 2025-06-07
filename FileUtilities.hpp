@@ -9,6 +9,14 @@
 #include "vendor/PlatformDetection/PlatformDetection.h"
 #include <filesystem>
 #include <string>
+#include <chrono>
+#include <thread>
+#include <unordered_map>
+#include <string>
+#include <functional>
+#include <atomic>
+#include <mutex>
+#include <iostream>
 
 #if defined(_BUILD_PLATFORM_WINDOWS)
     #define NOMINMAX
@@ -25,7 +33,7 @@ namespace FileUtilities {
     using DirContents = fs::directory_iterator;
     using DirContentsRecursive = fs::recursive_directory_iterator;
     using TimeType = std::filesystem::file_time_type;
-    using GetModifyTime = fs::last_write_time;
+    // using GetModifyTime = fs::last_write_time;
     static const fs::path FindSelfExe() {
         #if defined(_BUILD_PLATFORM_WINDOWS)
             std::vector<char> buf(1024, 0);
@@ -55,7 +63,14 @@ namespace FileUtilities {
 
     static inline bool FileExists(const std::string path) {
         struct stat buffer;
-        return (stat (path.c_str(), &buffer) == 0); 
+        return (stat(path.c_str(), &buffer) == 0); 
+    }
+
+    static inline bool DeleteFile(const std::string path) {
+        if (!fs::is_directory(path)) {
+            return fs::remove(path);
+        }
+        return false;
     }
 
     static inline bool DirectoryExists(const std::string& path) {
@@ -81,18 +96,18 @@ namespace FileUtilities {
         }
     }
     
-    enum PathType : std::uint8_t {
-        FullPath = 0,
-        FullName,
-        NameOnly,
-        SFXOnly
-    };
-    
     class ParsedPath {
         private:
         std::tuple<std::string, std::string, std::string> m_fullPath = {"", "", ""};
         
         public:
+        enum PathType : std::uint8_t {
+            FullPath = 0,
+            ParentDir,
+            FullName,
+            NameOnly,
+            SFXOnly
+        };
         struct REL{};
         struct ABS{};
         const bool setPathRelative(const std::string file) {
@@ -116,6 +131,9 @@ namespace FileUtilities {
                 case PathType::FullPath:
                     return std::get<0>(m_fullPath) + "/" + std::get<1>(m_fullPath) + std::get<2>(m_fullPath);
                 break;
+                case PathType::ParentDir:
+                    return std::get<0>(m_fullPath);
+                break;
                 case PathType::FullName:
                     return std::get<1>(m_fullPath) + std::get<2>(m_fullPath);
                 break;
@@ -132,22 +150,150 @@ namespace FileUtilities {
         
         operator const std::string() const {
             return getPath();
-        };
+        }
         
         ParsedPath() {}
 
-        ParsedPath(const std::string filepath, ParsedPath::REL r) {
+        ParsedPath(const std::string filepath, const ParsedPath::REL r) {
             setPathRelative(filepath);
         }
         
-        ParsedPath(const std::string filepath, ParsedPath::ABS a) {
+        ParsedPath(const std::string filepath, const ParsedPath::ABS a) {
             setPath(filepath);
         }
     };
+
+    inline bool operator==(const ParsedPath& lhs, const ParsedPath& rhs) {
+        return lhs.getPath() == rhs.getPath();
+    }
 
     inline std::ostream& operator<<(std::ostream& os, const ParsedPath& parsedPath) {
         os << parsedPath.getPath();
         return os;
     }
+}
+
+namespace std {
+    template<>
+    struct hash<FileUtilities::ParsedPath> {
+        std::size_t operator()(const FileUtilities::ParsedPath& obj) const {
+            return std::hash<std::string>{}(obj.getPath());
+        }
+    };
+}
+
+namespace FileUtilities {
+    class Watcher {
+        public:
+        typedef std::chrono::milliseconds DelayType;
+        typedef std::function<void(const ParsedPath&)> CallbackType;
+        enum Depth : bool {
+            SHALLOW = false,
+            RECURSIVE = true
+        };
+
+        Watcher(const ParsedPath& basePath, const CallbackType onCreate, const CallbackType onModify, const CallbackType onDelete, const Depth& depth, const bool rebuildStructure = true, const DelayType& delay = std::chrono::milliseconds(1000)) :
+            m_running(true),
+            m_rebuildStructure(rebuildStructure),
+            m_basePath(basePath),
+            m_onCreate(onCreate),
+            m_onModify(onModify),
+            m_onDelete(onDelete),
+            m_depth(depth),
+            m_delay(delay) {
+            start(basePath, rebuildStructure);
+        }
+        
+        void reload() {
+            const auto reloadDelay{getDelay() * 2};
+            setDelay(std::chrono::milliseconds(1));
+            m_running = false;
+            std::this_thread::sleep_for(reloadDelay);
+            start(m_basePath, m_rebuildStructure);
+        }
+
+        void setDelay(const DelayType& delay = std::chrono::milliseconds(1000)) {
+            m_delay = delay;
+        }
+
+        const DelayType getDelay() const {
+            return m_delay;
+        }
+
+        private:
+        std::atomic<bool> m_running;
+        const bool m_rebuildStructure;
+        const ParsedPath m_basePath;
+        const CallbackType m_onCreate;
+        const CallbackType m_onModify;
+        const CallbackType m_onDelete;
+        const Depth m_depth;
+        std::atomic<DelayType> m_delay;
+
+        void start(const ParsedPath& path, const bool& rebuildStructure) {
+            m_running = true;
+            if (rebuildStructure) {
+                if (!MakeDirectory(path.getPath())) {
+                    std::cout << "[Watcher] Could not create watch directory: " << path << std::endl;
+                    return;
+                }
+            }
+
+            if (m_depth) {
+                for (const auto& content : DirContents(path.getPath())) {
+                    if (content.is_directory()) {
+                        start({content.path().string(), ParsedPath::ABS{}}, rebuildStructure);
+                    }
+                }
+            }
+
+            std::thread(
+                [this, toWatch = path, rebuildStructure](){
+                    std::unordered_map<ParsedPath, TimeType> m_times;
+                    for (const auto& content : DirContents(toWatch.getPath()))
+                        m_times[{content.path().string(), ParsedPath::ABS{}}] = std::filesystem::last_write_time(content);
+                    
+                    while(m_running) {
+                        std::this_thread::sleep_for(m_delay.load());
+                        if (!DirectoryExists(toWatch.getPath())) {
+                            if (rebuildStructure && DirectoryExists(toWatch.getPath(ParsedPath::PathType::ParentDir))) MakeDirectory(toWatch.getPath());
+                            else continue;
+                        }
+
+                        // Delete
+                        auto it{m_times.begin()};
+                        while (it != m_times.end()) {
+                            if (!FileExists(it->first.getPath())) {
+                                m_onDelete(it->first);
+                                it = m_times.erase(it);
+                            }
+                            else {
+                                it++;
+                            }
+                        }
+
+                        for (const auto& content : DirContents(toWatch.getPath())) {
+                            if (content.is_regular_file()) {
+                                const auto lastModifyTime{fs::last_write_time(content)};
+                                const ParsedPath pp{content.path().string(), ParsedPath::ABS{}};
+                                const auto it{m_times.find(pp)};
+
+                                // Create
+                                if (it == m_times.end()) {
+                                    m_times[pp] = lastModifyTime;
+                                    m_onCreate(pp);
+                                }
+                                // Modify
+                                else if (m_times[pp] != lastModifyTime) {
+                                    m_times[pp] = lastModifyTime;
+                                    m_onModify(pp);
+                                }
+                            }
+                        }
+                    }
+                }
+            ).detach();
+        }
+    };
 }
 #endif
