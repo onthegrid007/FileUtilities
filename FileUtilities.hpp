@@ -12,7 +12,6 @@
 #include <chrono>
 #include <thread>
 #include <unordered_map>
-#include <string>
 #include <functional>
 #include <atomic>
 #include <mutex>
@@ -20,12 +19,15 @@
 
 #if defined(_BUILD_PLATFORM_WINDOWS)
     #define NOMINMAX
-    #include <Windows.h>
+    #include <windows.h>
     #include <direct.h>
     #define mkdir(path, code) _mkdir(path)
-#else
+    #define _DELETEFILE(path) (::DeleteFileA(path) != 0)
+#elif defined(_BUILD_PLATFORM_LINUX)
     #include <sys/stat.h>
     #include <sys/types.h>
+    #include <unistd.h>
+    #define _DELETEFILE(path) (unlink(path) == 0)
 #endif
 
 namespace FileUtilities {
@@ -33,68 +35,8 @@ namespace FileUtilities {
     using DirContents = fs::directory_iterator;
     using DirContentsRecursive = fs::recursive_directory_iterator;
     using TimeType = std::filesystem::file_time_type;
-    // using GetModifyTime = fs::last_write_time;
-    static const fs::path FindSelfExe() {
-        #if defined(_BUILD_PLATFORM_WINDOWS)
-            std::vector<char> buf(1024, 0);
-            auto size{buf.size()};
-            bool havePath{false};
-            bool shouldContinue{true};
-            while(shouldContinue) {
-                const auto result{GetModuleFileNameA(nullptr, &buf[0], size)};
-                const auto lastError{GetLastError()};
-                if(result == 0)
-                    shouldContinue = false;
-                else if(result < size) {
-                    havePath = true;
-                    shouldContinue = false;
-                }
-                else if((result == size) && ((lastError == ERROR_INSUFFICIENT_BUFFER) || (lastError == ERROR_SUCCESS)))
-                    buf.resize(size *= 2);
-            }
-            if(!havePath) return "";
-            return fs::canonical(std::string(&buf[0]));
-        #elif defined(_BUILD_PLATFORM_LINUX)
-            return fs::canonical("/proc/self/exe");
-        #else
-            return "";
-        #endif
-    }
-
-    static inline bool FileExists(const std::string path) {
-        struct stat buffer;
-        return (stat(path.c_str(), &buffer) == 0); 
-    }
-
-    static inline bool DeleteFile(const std::string path) {
-        if (!fs::is_directory(path)) {
-            return fs::remove(path);
-        }
-        return false;
-    }
-
-    static inline bool DirectoryExists(const std::string& path) {
-        struct stat info;
-        if (stat(path.c_str(), &info) != 0) {
-            return false;
-        }
-        else if (info.st_mode & S_IFDIR) {
-            return true;
-        }
-        return false;
-    }
-
-    static inline bool MakeDirectory(const std::string& path) {
-        if (mkdir(path.c_str(), 0755) == 0) {
-            return true;
-        }
-        else if (errno == EEXIST) {
-            return DirectoryExists(path);
-        }
-        else {
-            return false;
-        }
-    }
+    class ParsedPath;
+    static ParsedPath FindSelfExe();
     
     class ParsedPath {
         private:
@@ -104,22 +46,24 @@ namespace FileUtilities {
         enum PathType : std::uint8_t {
             FullPath = 0,
             ParentDir,
+            Abstract,
             FullName,
             NameOnly,
             SFXOnly
         };
         struct REL{};
         struct ABS{};
-        const bool setPathRelative(const std::string file) {
-            fs::path absPath = fs::absolute(FindSelfExe().parent_path().string() + "/" + file);
+
+        const bool setPathRelative(const std::string path) {
+            const fs::path absPath{fs::absolute(FindSelfExe().getPath(PathType::ParentDir) + "/" + path)};
             std::get<0>(m_fullPath) = absPath.parent_path().string();
             std::get<1>(m_fullPath) = absPath.stem().string();
             std::get<2>(m_fullPath) = absPath.extension().string();
             return fs::is_directory(std::get<0>(m_fullPath)) && fs::exists(absPath);
         }
         
-        const bool setPath(const std::string file) {
-            fs::path absPath = fs::absolute(file);
+        const bool setPath(const std::string path) {
+            const fs::path absPath{fs::absolute(path)};
             std::get<0>(m_fullPath) = absPath.parent_path().string();
             std::get<1>(m_fullPath) = absPath.stem().string();
             std::get<2>(m_fullPath) = absPath.extension().string();
@@ -133,6 +77,9 @@ namespace FileUtilities {
                 break;
                 case PathType::ParentDir:
                     return std::get<0>(m_fullPath);
+                break;
+                case PathType::Abstract:
+                    return std::get<0>(m_fullPath) + "/" + std::get<1>(m_fullPath);
                 break;
                 case PathType::FullName:
                     return std::get<1>(m_fullPath) + std::get<2>(m_fullPath);
@@ -154,12 +101,12 @@ namespace FileUtilities {
         
         ParsedPath() {}
 
-        ParsedPath(const std::string filepath, const ParsedPath::REL r) {
-            setPathRelative(filepath);
+        ParsedPath(const std::string path, const ParsedPath::REL r) {
+            setPathRelative(path);
         }
         
-        ParsedPath(const std::string filepath, const ParsedPath::ABS a) {
-            setPath(filepath);
+        ParsedPath(const std::string path, const ParsedPath::ABS a) {
+            setPath(path);
         }
     };
 
@@ -167,9 +114,68 @@ namespace FileUtilities {
         return lhs.getPath() == rhs.getPath();
     }
 
+    inline ParsedPath operator+(const ParsedPath& lhs, const std::string& rhs) {
+        return {lhs.getPath() + rhs, ParsedPath::ABS{}};
+    }
+
     inline std::ostream& operator<<(std::ostream& os, const ParsedPath& parsedPath) {
         os << parsedPath.getPath();
         return os;
+    }
+
+    static ParsedPath FindSelfExe() {
+        #if defined(_BUILD_PLATFORM_WINDOWS)
+            std::vector<char> buf(1024, 0);
+            auto size{buf.size()};
+            bool havePath{false};
+            bool shouldContinue{true};
+            while(shouldContinue) {
+                const auto result{GetModuleFileNameA(nullptr, &buf[0], size)};
+                const auto lastError{GetLastError()};
+                if(result == 0)
+                    shouldContinue = false;
+                else if(result < size) {
+                    havePath = true;
+                    shouldContinue = false;
+                }
+                else if((result == size) && ((lastError == ERROR_INSUFFICIENT_BUFFER) || (lastError == ERROR_SUCCESS)))
+                    buf.resize(size *= 2);
+            }
+            if(!havePath) return {"", ParsedPath::ABS{}};
+            return {fs::canonical(std::string(&buf[0])).string(), ParsedPath::ABS{}};
+        #elif defined(_BUILD_PLATFORM_LINUX)
+            return {fs::canonical("/proc/self/exe").string(), ParsedPath::ABS{}};
+        #else
+            return {"", ParsedPath::ABS{}};
+        #endif
+    }
+
+    static inline bool FileExists(const ParsedPath& file) {
+        struct stat buffer;
+        return (stat(file.getPath().c_str(), &buffer) == 0); 
+    }
+
+    static inline bool DeleteFile(const ParsedPath& file) {
+        return _DELETEFILE(file.getPath().c_str());
+    }
+
+    static inline bool DirectoryExists(const ParsedPath& path) {
+        struct stat info;
+        if (stat(path.getPath().c_str(), &info) != 0) {
+            return false;
+        }
+        else if (info.st_mode & S_IFDIR) {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool MakeDirectory(const ParsedPath& path) {
+        if (!DirectoryExists(path)) {
+            if (mkdir(path.getPath().c_str(), 0755) == 0) return true;
+            return false;
+        }
+        return true;
     }
 }
 
@@ -233,10 +239,7 @@ namespace FileUtilities {
         void start(const ParsedPath& path, const bool& rebuildStructure) {
             m_running = true;
             if (rebuildStructure) {
-                if (!MakeDirectory(path.getPath())) {
-                    std::cout << "[Watcher] Could not create watch directory: " << path << std::endl;
-                    return;
-                }
+                if (!MakeDirectory(path)) return;
             }
 
             if (m_depth) {
@@ -255,15 +258,15 @@ namespace FileUtilities {
                     
                     while(m_running) {
                         std::this_thread::sleep_for(m_delay.load());
-                        if (!DirectoryExists(toWatch.getPath())) {
-                            if (rebuildStructure && DirectoryExists(toWatch.getPath(ParsedPath::PathType::ParentDir))) MakeDirectory(toWatch.getPath());
+                        if (!DirectoryExists(toWatch)) {
+                            if (rebuildStructure && DirectoryExists({toWatch.getPath(ParsedPath::PathType::ParentDir), FileUtilities::ParsedPath::ABS{}})) MakeDirectory(toWatch);
                             else continue;
                         }
 
                         // Delete
                         auto it{m_times.begin()};
                         while (it != m_times.end()) {
-                            if (!FileExists(it->first.getPath())) {
+                            if (!FileExists(it->first)) {
                                 m_onDelete(it->first);
                                 it = m_times.erase(it);
                             }
