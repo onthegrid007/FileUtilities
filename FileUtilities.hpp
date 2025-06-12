@@ -152,7 +152,7 @@ namespace FileUtilities {
 
     static inline bool FileExists(const ParsedPath& file) {
         struct stat buffer;
-        return (stat(file.getPath().c_str(), &buffer) == 0); 
+        return (stat(file.getPath().c_str(), &buffer) == 0);
     }
 
     static inline bool DeleteFile(const ParsedPath& file) {
